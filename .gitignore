@@ -1,0 +1,6 @@
+# ---------------- Basics ----------------
+__pycache__/
+*.env
+*.venv/
+# Credentials
+firebase-credentials.json

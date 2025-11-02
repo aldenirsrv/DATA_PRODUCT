@@ -1,0 +1,9 @@
+# -----------------------------
+#  Weather collector
+# -----------------------------
+requests
+pandas
+google-cloud-firestore
+google-cloud-secret-manager
+sendgrid==6.11.0   # optional
+python-dotenv

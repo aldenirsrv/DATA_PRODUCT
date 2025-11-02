@@ -1,0 +1,42 @@
+
+
+x-airflow-common:
+  &airflow-common
+  image: weather-airflow:latest
+  env_file:
+  - .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    GCP_PROJECT:  ${GCP_PROJECT}
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/firebase-credentials.json
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./scripts:/opt/airflow/dags/scripts
+    - ./firebase-credentials.json:/opt/airflow/secrets/firebase-credentials.json:ro
+  depends_on:
+    - postgres
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8085:8080"
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+volumes:
+  postgres_data:

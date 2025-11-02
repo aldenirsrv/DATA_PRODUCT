@@ -1,19 +1,19 @@
-
-
 x-airflow-common:
   &airflow-common
-  image: weather-airflow:latest
+  image: data-product-airflow:latest
   env_file:
-  - .env
+    - .env
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    GCP_PROJECT:  ${GCP_PROJECT}
+    GCP_PROJECT: ${GCP_PROJECT}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/firebase-credentials.json
+    PYTHONPATH: /opt/airflow 
   volumes:
     - ./dags:/opt/airflow/dags
-    - ./scripts:/opt/airflow/dags/scripts
+    - ./operators:/opt/airflow/operators
+    - ./tests:/opt/airflow/tests
     - ./firebase-credentials.json:/opt/airflow/secrets/firebase-credentials.json:ro
   depends_on:
     - postgres
@@ -28,8 +28,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # ✅ Only this service builds the image
   airflow-webserver:
     <<: *airflow-common
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: webserver
     ports:
       - "8085:8080"
@@ -37,6 +41,21 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com || true
 
 volumes:
   postgres_data:

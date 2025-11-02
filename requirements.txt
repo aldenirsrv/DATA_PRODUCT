@@ -1,9 +1,12 @@
-# -----------------------------
-#  Weather collector
-# -----------------------------
-requests
 pandas
+requests
+sendgrid
+python-dotenv
+google-cloud-bigquery
 google-cloud-firestore
 google-cloud-secret-manager
-sendgrid==6.11.0   # optional
-python-dotenv
+pyyaml
+jsonschema
+pytest
+apache-airflow==2.10.0
+pendulum>=2.0,<3.0

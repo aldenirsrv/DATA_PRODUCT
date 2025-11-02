@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "description": {"type": "string"},
+    "owner": {"type": "string"},
+    "retries": {"type": "integer"},
+    "retry_delay_minutes": {"type": "integer"},
+    "schedule": {"type": "string"},
+    "start_date": {"type": "string"},
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "operator": {"type": "string"},
+          "function": {"type": "string"},
+          "bash_command": {"type": "string"},
+          "http_conn_id": {"type": "string"},
+          "endpoint": {"type": "string"},
+          "sql": {"type": "string"},
+          "params": {"type": "object"}
+        },
+        "required": ["id", "operator"]
+      }
+    }
+  },
+  "required": ["name", "description", "owner", "retries", "retry_delay_minutes", "schedule", "start_date", "tasks"]
+}

@@ -1,0 +1,36 @@
+name: weather_data_product
+description: Extract and store Vancouver weather data into BigQuery and Firestore.
+owner: data@data.com
+retries: 2
+retry_delay_minutes: 5
+schedule: "0 * * * *"
+start_date: "2025-01-01"
+
+tasks:
+  - id: extract_weather_data
+    operator: PythonOperator
+    function: extract_weather
+    params:
+      api_url: "https://api.open-meteo.com/v1/forecast"
+      latitude: 49.2827
+      longitude: -123.1207
+      metrics: "temperature_2m,precipitation,wind_speed_10m"
+
+  - id: store_to_bigquery
+    operator: PythonOperator
+    function: store_to_bigquery
+    params:
+      dataset: "weather_data"
+      table: "weather_records"
+
+  - id: store_to_firestore
+    operator: PythonOperator
+    function: store_to_firestore
+    params:
+      collection: "weather_records"
+
+  - id: send_alerts
+    operator: PythonOperator
+    function: send_alerts
+    params:
+      recipient: "your-email@email.com"

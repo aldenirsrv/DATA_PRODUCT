@@ -12,7 +12,7 @@ import os
 import importlib
 from datetime import datetime, timedelta
 from airflow import DAG
-from dags.utils import validate_yaml, safe_get
+from utils import validate_yaml, safe_get
 from operators.custom_ops import TASK_FUNCTIONS
 
 

@@ -33,7 +33,7 @@ Traditional data pipelines are tightly coupled to specific data flows, making th
 - **Configuration-Driven**: Define data products in YAML—no code changes needed
 - **Auto-Discovery**: Automatically registers all data products at runtime
 - **Provider-Agnostic**: No hard dependencies on specific cloud operators
-- **Enterprise-Grade**: Schema validation, CI/CD testing, and secure credential management
+- **Enterprise-Grade**: Schema validation, CI/CD testing (readness), and secure credential management
 - **Scalable**: Mirrors practices used at Google, Meta, and Amazon
 
 ---
@@ -333,9 +333,9 @@ cp .env.example .env
 Edit `.env`:
 
 ```bash
-GCP_PROJECT=your-project-id
-AIRFLOW__CORE__EXECUTOR=LocalExecutor
-AIRFLOW__CORE__LOAD_EXAMPLES=false
+GCP_PROJECT=<your-project-id>
+SENDGRID_API_KEY=<your-sendgrid-api-key>
+AIRFLOW__WEBSERVER__SECRET_KEY=<super_secret_local_key_123>
 ```
 
 #### Step 2.3: Build Docker Image
@@ -345,13 +345,19 @@ docker compose build
 ```
 
 #### Step 2.4: Initialize Airflow Database
+Run Airflow initialization manually
+Now run your init container explicitly (once):
 
 ```bash
 # Run database migrations
 docker compose run --rm airflow-init
 ```
+You should see output ending like this:
 
-This command:
+DB migration done.
+User created successfully
+
+#### This command:
 - Creates Airflow metadata database
 - Runs migrations
 - Creates admin user (`admin`/`admin`)
@@ -395,7 +401,6 @@ Once logged in to Airflow UI, you'll see auto-registered DAGs:
 
 ```
 ✅ weather_data_product
-✅ sales_data_product
 ```
 
 ### Triggering a DAG Manually
@@ -444,6 +449,8 @@ pytest tests/ -v
 ```bash
 pytest tests/ --cov=dags --cov=operators --cov-report=html
 ```
+To test coverage install the package (not present in this project):
+```bash pip install pytest-cov```
 
 ### Individual Test Suites
 
@@ -485,8 +492,8 @@ tasks:
     function: extract_weather
     params:
       api_url: "https://api.example.com/data"
-      latitude: 49.2827
-      longitude: -123.1207
+      latitude: 40.7128
+      longitude: -74.0060
       metrics: "temperature_2m,precipitation"
 
   - id: store_bigquery
@@ -495,30 +502,50 @@ tasks:
     params:
       dataset: "your_dataset"
       table: "your_table"
+```
 
-  - id: send_notification
+### Step 2: Create a New Function (if needed)
+First, define your custom function in `operators/custom_ops.py`:
+
+```python 
+@task
+def test_send_alerts(recipient: str, **context):
+    print(f"✅ Sent alerts to {recipient}.")
+    return f"Sent to {recipient}"
+```
+This example defines a simple task that simulates sending alerts and logs the recipient.
+
+#### Update Your Data Product to Use the New Function
+Next, register the function in your data product configuration so it can be used as an operator:
+```yaml
+  - id: test_send_alerts
     operator: PythonOperator
-    function: send_alerts
+    function: test_send_alerts
     params:
       recipient: "alerts@example.com"
 ```
+This links your `test_send_alerts` function to a `PythonOperator` and specifies its parameters.
 
-### Step 2: Validate Configuration
-
+### Step 3: Validate Configuration
+```bash
+    pytest tests/test_schema_validation.py -v 
+```
+or inside the docker
 ```bash
 docker compose run --rm airflow-webserver \
   pytest /opt/airflow/tests/test_schema_validation.py -v
 ```
 
-### Step 3: Reload Airflow
+### Step 4: Reload Airflow
+At the Airflow homepage http://localhost:8085/home, click at the refresh.
+The new DAG will appear automatically in the UI!
 
+#### You can restart the application if refrash don't work
 ```bash
 docker compose restart airflow-webserver airflow-scheduler
 ```
 
-The new DAG will appear automatically in the UI!
-
-### Step 4: Test the DAG
+### Step 5: Test the DAG
 
 1. Activate the DAG in Airflow UI
 2. Trigger manually
@@ -576,6 +603,71 @@ docker compose run --rm airflow-webserver python -m py_compile /opt/airflow/dags
 # Test imports
 docker compose run --rm airflow-webserver python -c "from dags.utils import validate_yaml"
 ```
+---
+**Problem**: Your DAG does not apper in UI
+
+**Solution**: Check your URL
+- http://localhost:8085/home?lastrun=running
+  - Show only Dags that is running
+
+Your URL should be "home", that shows all Dags running, paused and or activad
+- http://localhost:8085/home
+---
+
+**Problem**: you are at the home, but the DAGs are not appearing
+
+**Solution**:
+
+```bash
+# Access your docker instance
+docker compose exec airflow-webserver bash
+```
+```bash
+# List your DAGs
+airflow dags list
+/home/airflow/.local/lib/python3.11/site-packages/airflow/plugins_manager.py:30 DeprecationWarning: 'cgitb' is deprecated and slated for removal in Python 3.13
+✅ Auto-registered 0 task functions from operators.
+✅ Registered data product DAG: send_test_product
+✅ Registered data product DAG: weather_data_product
+dag_id               | fileloc                      | owners        | is_paused
+=====================+==============================+===============+==========
+send_test_product    | /opt/airflow/dags/factory.py | data@data.com | False    
+weather_data_product | /opt/airflow/dags/factory.py | data@data.com | False    
+```
+```bash
+# execute the factory file
+ python /opt/airflow/dags/factory.py
+```
+You should have the following result
+```bash
+✅ Auto-registered 0 task functions from operators.
+✅ Registered data product DAG: send_test_product
+✅ Registered data product DAG: weather_data_product
+```
+```bash
+  airflow dags list-import-errors
+```
+You should have the following result
+```bash
+✅ Auto-registered 0 task functions from operators.
+✅ Registered data product DAG: send_test_product
+✅ Registered data product DAG: weather_data_product
+No data found
+```
+```bash
+# Trigger a run manually
+airflow dags trigger weather_data_product
+
+# Watch tasks in the UI or via logs:
+docker compose logs airflow-scheduler | grep weather_data_product
+```
+**type `exit` to leave the docker bash**
+Restart (or refresh) the webserver if the UI still looks empty
+```bash
+docker compose restart airflow-webserver
+```
+Then visit http://localhost:8085
+---
 
 ### Permission Denied Errors
 
@@ -752,7 +844,6 @@ docker compose exec airflow-scheduler \
 ## 🗺 Roadmap
 
 ### Near Term
-- [ ] Terraform modules for Cloud Composer deployment
 - [ ] Slack notifications integration
 - [ ] dbt integration for transformations
 - [ ] Custom Airflow operators library

@@ -12,7 +12,7 @@ import os
 import importlib
 from datetime import datetime, timedelta
 from airflow import DAG
-from utils import validate_yaml, safe_get
+from dags.utils import validate_yaml, safe_get, slack_failure_alert
 from operators.custom_ops import TASK_FUNCTIONS
 
 
@@ -58,6 +58,7 @@ def create_dag_from_yaml(config_path: str):
         "owner": cfg["owner"],
         "retries": cfg["retries"],
         "retry_delay": timedelta(minutes=cfg["retry_delay_minutes"]),
+        'on_failure_callback': slack_failure_alert,
     }
 
     dag = DAG(

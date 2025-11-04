@@ -2,7 +2,7 @@ name: send_test_product
 description: Send test alerts to a recipient.
 owner: data@data.com
 retries: 2
-retry_delay_minutes: 5
+retry_delay_minutes: 1
 schedule: "@daily"
 start_date: "2025-01-01"
 
@@ -12,3 +12,7 @@ tasks:
     function: test_send_alerts
     params:
       recipient: "your-email@email.com"
+  - id: force_error
+    operator: PythonOperator
+    function: force_error
+    

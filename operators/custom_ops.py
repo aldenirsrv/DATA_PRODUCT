@@ -99,6 +99,10 @@ def test_send_alerts(recipient: str, **context):
     print(f"✅ Sent alerts to {recipient}.")
     return f"Sent to {recipient}"
 
+@task
+def force_error(**context):
+    raise ValueError("💥 Simulated failure for Slack test")
+
 # Registry
 TASK_FUNCTIONS = {
     "extract_weather": extract_weather,
@@ -106,4 +110,5 @@ TASK_FUNCTIONS = {
     "store_to_firestore": store_to_firestore,
     "send_alerts": send_alerts,
     "test_send_alerts": test_send_alerts,
+    "force_error": force_error
 }

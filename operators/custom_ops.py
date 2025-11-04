@@ -94,6 +94,10 @@ def send_alerts(recipient: str, **context):
     print(f"✅ Sent {len(alerts)} alerts to {recipient}.")
     return f"Sent {len(alerts)} alerts"
 
+@task
+def test_send_alerts(recipient: str, **context):
+    print(f"✅ Sent alerts to {recipient}.")
+    return f"Sent to {recipient}"
 
 # Registry
 TASK_FUNCTIONS = {
@@ -101,4 +105,5 @@ TASK_FUNCTIONS = {
     "store_to_bigquery": store_to_bigquery,
     "store_to_firestore": store_to_firestore,
     "send_alerts": send_alerts,
+    "test_send_alerts": test_send_alerts,
 }

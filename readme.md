@@ -235,6 +235,44 @@ roles/secretmanager.secretAccessor
 ```
 
 ---
+# 🧠 How It Works
+### 1️⃣ Declarative YAML
+
+Each data product is described declaratively:
+```yaml
+name: weather_data_product
+description: Weather alerts pipeline
+owner: weather-team@ifood.com
+start_date: "2025-01-01"
+schedule: "0 * * * *"
+retries: 1
+retry_delay_minutes: 5
+
+tasks:
+  - id: extract_weather
+    operator: PythonOperator
+    function: extract_weather
+  - id: store_to_bigquery
+    operator: PythonOperator
+    function: store_to_bigquery
+```
+### 2️⃣ Auto-discovery
+
+`factory.py` dynamically loads all YAMLs, validates against the schema, and registers each DAG automatically:
+✅ Registered data product DAG: weather_data_product
+✅ Registered data product DAG: send_test_product
+
+### 3️⃣ Testable & Extensible
+
+The included pytest suite ensures your DAGs and YAMLs load cleanly:
+
+```bash
+pytest -q tests/
+```
+
+
+# 📬 Failure Notifications
+### 💬 Slack Alerts (new feature)
 
 ## 🛠 Installation
 
@@ -290,6 +328,10 @@ export SERVICE_ACCOUNT="firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount
 
 # Grant secret access
 gcloud secrets add-iam-policy-binding SENDGRID_API_KEY \
+  --member="serviceAccount:$SERVICE_ACCOUNT" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding SLACK_WEBHOOK \
   --member="serviceAccount:$SERVICE_ACCOUNT" \
   --role="roles/secretmanager.secretAccessor"
 
@@ -718,6 +760,20 @@ docker compose build --no-cache
 # Restart services
 docker compose up -d
 ```
+
+**Problem**: You create a new task, but it doesn't work
+
+**Solution**:
+```bash
+# check or erros
+docker compose exec airflow-scheduler airflow dags list-import-errors
+
+# ✅ Auto-registered 0 task functions from operators.
+# ❌ Failed to register send_test_product.yaml: 'function' object has no attribute 'override'
+# ✅ Registered data product DAG: weather_data_product
+# No data found
+```
+To work you must use Airflow TaskFlow API decorated tasks (i.e. functions declared using @task from airflow.decorators).
 
 ### Clean Slate Rebuild
 

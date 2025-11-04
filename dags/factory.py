@@ -13,7 +13,7 @@ import importlib
 from datetime import datetime, timedelta
 from airflow import DAG
 from dags.utils import validate_yaml, safe_get, slack_failure_alert
-from operators.custom_ops import TASK_FUNCTIONS
+from operators.registry import TASK_FUNCTIONS
 
 
 # ---------------------------------------------------------------------

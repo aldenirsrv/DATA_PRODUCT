@@ -7,6 +7,7 @@ x-airflow-common:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Vancouver
     GCP_PROJECT: ${GCP_PROJECT}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/firebase-credentials.json
     PYTHONPATH: /opt/airflow 

@@ -4,7 +4,6 @@ A scalable, containerized, configuration-driven orchestration platform built on 
 
 This project introduces a **declarative DAG factory** pattern that dynamically registers data products from YAML definitions—eliminating manual DAG editing and ensuring consistency, governance, and scalability at enterprise scale.
 
----
 
 ## 📋 Table of Contents
 
@@ -27,14 +26,22 @@ This project introduces a **declarative DAG factory** pattern that dynamically r
 ---
 
 ## 🧩 Why This Project
-
 Traditional data pipelines are tightly coupled to specific data flows, making them difficult to scale and maintain. This project solves that by:
 
 - **Configuration-Driven**: Define data products in YAML—no code changes needed
 - **Auto-Discovery**: Automatically registers all data products at runtime
 - **Provider-Agnostic**: No hard dependencies on specific cloud operators
 - **Enterprise-Grade**: Schema validation, CI/CD testing (readness), and secure credential management
-- **Scalable**: Mirrors practices used at Google, Meta, and Amazon
+- **Scalable**: Mirrors practices used at big Techs
+
+### Enterprise-grade dynamic DAG factory. ##
+✔ Auto-discovers all YAML data products under /products and registers them as DAGs.
+✔ Provider-agnostic (no hard-coded imports)
+✔ Dynamic operator resolution by name
+✔ Safe fallback if an operator package is missing
+✔ Compatible with any Airflow environment
+
+
 
 ---
 
@@ -185,8 +192,10 @@ data_product_factory/
 │       └── sales_data_product.yaml     # Example: Sales pipeline
 │
 ├── operators/
-│   ├── __init__.py                     # Auto-registers task functions
-│   └── custom_ops.py                   # All @task decorated functions
+│   ├── __init__.py
+│   ├── function_1.py                 # task function
+│   ├── function_2.py                 # task function
+│   └── registry.py                   # Auto-registers All @task decorated functions
 │
 ├── tests/
 │   ├── conftest.py                     # pytest configuration
@@ -270,6 +279,21 @@ The included pytest suite ensures your DAGs and YAMLs load cleanly:
 pytest -q tests/
 ```
 
+--- 
+
+### 🕒 Scheduling Modes in Data-Product YAML
+
+| Scenario                                 | schedule:        | What happens                                                                                            |
+| ---------------------------------------- | ---------------------------------| ------------------------------------------------------------------------------------------------------- |
+| **Daily automatic run + manual allowed** | `@daily`       | Automatically runs every day at midnight, but can still be triggered manually from the UI, CLI, or API. |
+| **Manual-only**                          | `null`           | Disables automatic scheduling — the DAG only runs when manually triggered.                              |
+| **Every 10 minutes**                     | `*/10 * * * *"` | Uses a cron expression to run every 10 minutes. Ideal for near-real-time ingestion.                     |
+| **Weekly**                               | `"@weekly"`      | Runs once a week at midnight on Sunday (Airflow default).                                               |
+
+You can use any valid [CRON expression](https://crontab.guru/) or Airflow preset (@hourly, @daily, @weekly, etc.).
+If you want your pipeline to run only on demand, always set schedule: null.
+
+--- 
 
 # 📬 Failure Notifications
 ### 💬 Slack Alerts (new feature)

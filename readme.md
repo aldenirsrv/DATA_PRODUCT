@@ -401,7 +401,7 @@ Edit `.env`:
 GCP_PROJECT=<your-project-id>
 SENDGRID_API_KEY=<your-sendgrid-api-key>
 AIRFLOW__WEBSERVER__SECRET_KEY=<super_secret_local_key_123>
-SLACK_WEBHOOK=https://hooks.slack.com/services/...
+SLACK_WEBHOOK=https://hooks.slack.com/services/XXXXX/YYYYY/ZZZZZ
 SEND_GRID_EMAIL=<your_sendgrid_email_configurated>
 ```
 

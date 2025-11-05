@@ -336,8 +336,7 @@ export GCP_PROJECT="your-project-id"
 gcloud config set project $GCP_PROJECT
 
 # Store SendGrid API key
-echo -n "your-sendgrid-api-key" | \
-  gcloud secrets create SENDGRID_API_KEY --data-file=-
+echo "your-sendgrid-api-key" | gcloud secrets create SENDGRID_API_KEY --data-file=-
 
 # Store Firebase credentials
 gcloud secrets create FIREBASE_CREDENTIALS \
@@ -402,6 +401,9 @@ Edit `.env`:
 GCP_PROJECT=<your-project-id>
 SENDGRID_API_KEY=<your-sendgrid-api-key>
 AIRFLOW__WEBSERVER__SECRET_KEY=<super_secret_local_key_123>
+SEND_GRID_EMAIL=<your_sendgrid_email_configurated>
+SLACK_WEBHOOK=https://hooks.slack.com/services/...
+SEND_GRID_EMAIL=<your_sendgrid_email_configurated>
 ```
 
 #### Step 2.3: Build Docker Image
@@ -572,25 +574,74 @@ tasks:
 
 ### Step 2: Create a New Function (if needed)
 First, define your custom function in `operators/custom_ops.py`:
-
+#### 🔧 Template for New Tasks
 ```python 
 @task
-def test_send_alerts(recipient: str, **context):
-    print(f"✅ Sent alerts to {recipient}.")
-    return f"Sent to {recipient}"
+def your_task_name(
+    required_param: str,
+    optional_param: int = 100,
+    upstream_data: str = None,
+    **context
+):
+    """
+    [One-line summary of what this task does and what system it interacts with].
+    
+    Args:
+        required_param: [Clear description with purpose and format]
+        optional_param: [Clear description with units if applicable (default: 100)]
+        upstream_data: JSON string from upstream task (automatically injected)
+        **context: Airflow context
+    
+    Returns:
+        [type]: [Description of return value structure and what it contains]
+    
+    Raises:
+        ValueError: [When and why this exception might be raised]
+        ConnectionError: [When and why this exception might be raised]
+    """
+    # Implementation here
+```
+
+### 💡 Real-World Examples
+Data Transformation Task
+
+```python 
+
+@task
+def transform_sales_data(
+    apply_currency_conversion: bool = True,
+    target_currency: str = "USD",
+    upstream_data: str = None,
+    **context
+):
+    """
+    Transform raw sales data with currency conversion and profit margin calculations.
+    
+    Args:
+        apply_currency_conversion: Whether to convert all amounts to target currency (default: True)
+        target_currency: ISO 4217 currency code for conversion (default: "USD")
+        upstream_data: JSON string from upstream task containing raw sales data (automatically injected)
+        **context: Airflow context
+    
+    Returns:
+        str: JSON string of transformed DataFrame with converted_amount, profit_margin, and normalized_date columns
+    """
+    # Implementation here
+
 ```
 This example defines a simple task that simulates sending alerts and logs the recipient.
 
 #### Update Your Data Product to Use the New Function
 Next, register the function in your data product configuration so it can be used as an operator:
 ```yaml
-  - id: test_send_alerts
+  - id: transform_sales_data
     operator: PythonOperator
-    function: test_send_alerts
+    function: transform_sales_data
+    depends_on_output: other_task
     params:
-      recipient: "alerts@example.com"
+      target_currency: "USD"
 ```
-This links your `test_send_alerts` function to a `PythonOperator` and specifies its parameters.
+This links your `transform_sales_data` function to a `PythonOperator` and specifies its parameters.
 
 ### Step 3: Validate Configuration
 ```bash
@@ -739,7 +790,6 @@ Then visit http://localhost:8085
 
 **Problem**: `403 Access Denied` in BigQuery tasks
 
-**Solution**:
 ```bash
 # Verify service account has permissions
 gcloud projects get-iam-policy $GCP_PROJECT \
@@ -767,6 +817,45 @@ docker compose ps postgres
 # Check connection string
 docker compose exec airflow-webserver \
   airflow config get-value database sql_alchemy_conn
+```
+
+
+### Permission Denied Errors or invalid header in Sendgrid integration
+
+**Problem**: `HTTP Error 403: Forbidden` or `Invalid header`in Sendgrid
+
+```json
+{
+"alertsTriggered": 1,
+"error":"Invalid header value b'Bearer SG.**ZU8\n'",
+"status":"email_failed"
+}
+```
+ OR
+```json
+{ 
+    "alertsTriggered":1, 
+    "error":"HTTP Error 403: Forbidden",
+    "status":"email_failed" 
+	
+}
+```
+**Solution**:
+✅ Fix: re-upload the key without the newline or any caracter at the end
+```bash
+gcloud secrets versions add SENDGRID_API_KEY \
+  --data-file=<(echo "SG.NEW_VALID_KEY_HERE") \
+  --project <GCP_PROJECT>
+```
+
+Then verify again:
+```bash
+gcloud secrets versions access latest --secret=SENDGRID_API_KEY --project GCP_PROJECT | hexdump -C
+```
+✅ Good output will now end exactly like this, with no 0a:
+```bash
+00000040  32 7a 5a 55 38                                    |2zZU8|
+00000045
 ```
 
 ### Missing Dependencies

@@ -5,11 +5,13 @@ retries: 2
 retry_delay_minutes: 5
 schedule: "0 * * * *"
 start_date: "2025-01-01"
+notify_on_completion: true
 
 tasks:
   - id: extract_weather_data
     operator: PythonOperator
     function: extract_weather
+    notify_on_success: true 
     params:
       api_url: "https://api.open-meteo.com/v1/forecast"
       latitude: 49.2827
@@ -19,6 +21,7 @@ tasks:
   - id: store_to_bigquery
     operator: PythonOperator
     function: store_to_bigquery
+    depends_on_output: extract_weather_data
     params:
       dataset: "weather_data"
       table: "weather_records"
@@ -26,11 +29,16 @@ tasks:
   - id: store_to_firestore
     operator: PythonOperator
     function: store_to_firestore
+    depends_on_output: extract_weather_data
     params:
       collection: "weather_records"
 
   - id: send_alerts
     operator: PythonOperator
     function: send_alerts
+    depends_on_output: extract_weather_data
     params:
-      recipient: "your-email@email.com"
+      recipient: "aldenirsrv@gmail.com"
+      temperature_threshold: 15      # 👈 Alert if below -5°C
+      wind_speed_threshold: 80       # 👈 Alert if above 80 km/h
+      precipitation_threshold: 15    # 👈 Alert if above 15mm

@@ -9,6 +9,7 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Vancouver
     GCP_PROJECT: ${GCP_PROJECT}
+    SEND_GRID_EMAIL: ${SEND_GRID_EMAIL}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/firebase-credentials.json
     PYTHONPATH: /opt/airflow 
   volumes:

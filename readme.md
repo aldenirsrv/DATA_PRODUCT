@@ -249,21 +249,40 @@ roles/secretmanager.secretAccessor
 
 Each data product is described declaratively:
 ```yaml
-name: weather_data_product
-description: Weather alerts pipeline
-owner: weather-team@ifood.com
+name: critical_sales_pipeline
+description: Daily sales ETL with full monitoring
+owner: analytics@company.com
+retries: 3
+retry_delay_minutes: 10
+schedule: "0 2 * * *"  # Daily at 2 AM
 start_date: "2025-01-01"
-schedule: "0 * * * *"
-retries: 1
-retry_delay_minutes: 5
+notify_on_completion: true  # 🎉 Know when pipeline completes
 
 tasks:
-  - id: extract_weather
+  # Extract - Monitor failures only (automatic)
+  - id: extract_sales
     operator: PythonOperator
-    function: extract_weather
-  - id: store_to_bigquery
+    function: extract_sales_data
+    params:
+      api_url: "https://api.company.com/sales"
+      date_range_days: 1
+
+  # Load - Save on bigquery
+  - id: load_to_warehouse
     operator: PythonOperator
     function: store_to_bigquery
+    depends_on_output: extract_sales
+    params:
+      dataset: "sales_data"
+      table: "daily_sales"
+
+  # Alert stakeholders - Monitor failures only
+  - id: notify_stakeholders
+    operator: PythonOperator
+    function: send_alerts
+    depends_on_output: generate_dashboard
+    params:
+      recipient: "sales-leadership@company.com"
 ```
 ### 2️⃣ Auto-discovery
 
@@ -297,6 +316,33 @@ If you want your pipeline to run only on demand, always set schedule: null.
 
 # 📬 Failure Notifications
 ### 💬 Slack Alerts (new feature)
+Slack Message:
+```bash
+🚨 Airflow Task Failure
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DAG:                          Task:
+weather_data_product          store_to_bigquery
+
+Execution Date:               Status:
+2025-01-15 14:30:00          ❌ Failed
+
+Error:
+google.api_core.exceptions.PermissionDenied: ...
+
+Logs: View Task Logs →
+```
+```bash
+🎉 DAG Completed Successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DAG:                          Tasks:
+weather_data_product          4 completed
+
+Execution Date:               Status:
+2025-01-15 14:30:00          ✅ Success
+```
+---
 
 ## 🛠 Installation
 
@@ -552,11 +598,12 @@ start_date: "2025-01-01"
 schedule: "0 */6 * * *"  # Every 6 hours
 retries: 2
 retry_delay_minutes: 5
+notify_on_completion: true (optional)
 
 tasks:
   - id: extract_data
     operator: PythonOperator
-    function: extract_weather
+    function: extract_data
     params:
       api_url: "https://api.example.com/data"
       latitude: 40.7128
@@ -566,6 +613,7 @@ tasks:
   - id: store_bigquery
     operator: PythonOperator
     function: store_to_bigquery
+    depends_on_output: extract_data
     params:
       dataset: "your_dataset"
       table: "your_table"
@@ -1012,7 +1060,7 @@ docker compose exec airflow-scheduler \
 ## 🗺 Roadmap
 
 ### Near Term
-- [ ] Slack notifications integration
+- [x] Slack notifications integration
 - [ ] dbt integration for transformations
 - [ ] Custom Airflow operators library
 

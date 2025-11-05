@@ -4,6 +4,7 @@ Auto-discovers all YAML data products under /products and registers them as DAGs
 
 ✔ Provider-agnostic (no hard-coded imports)
 ✔ Dynamic operator resolution by name
+✔ Dynamic data dependency resolution
 ✔ Safe fallback if an operator package is missing
 ✔ Compatible with any Airflow environment
 """
@@ -12,8 +13,9 @@ import os
 import importlib
 from datetime import datetime, timedelta
 from airflow import DAG
-from dags.utils import validate_yaml, safe_get, slack_failure_alert
-from operators.custom_ops import TASK_FUNCTIONS
+from dags.utils import validate_yaml, safe_get
+from operators.registry import TASK_FUNCTIONS
+from operators.slack_operators import slack_failure_alert, slack_dag_completion_alert
 
 
 # ---------------------------------------------------------------------
@@ -61,6 +63,11 @@ def create_dag_from_yaml(config_path: str):
         'on_failure_callback': slack_failure_alert,
     }
 
+    # Check if DAG-level success notification is requested
+    on_success = None
+    if cfg.get("notify_on_completion"):
+        on_success = slack_dag_completion_alert
+
     dag = DAG(
         dag_id=cfg["name"],
         description=cfg["description"],
@@ -69,10 +76,12 @@ def create_dag_from_yaml(config_path: str):
         default_args=default_args,
         catchup=False,
         tags=["data_product"],
+        on_success_callback=on_success,
     )
 
     with dag:
         tasks = {}
+        task_outputs = {}  # Track task return values for dependency injection
 
         for t in cfg["tasks"]:
             op_type = t["operator"]
@@ -86,7 +95,25 @@ def create_dag_from_yaml(config_path: str):
                 func = TASK_FUNCTIONS.get(func_name)
                 if not func:
                     raise ValueError(f"Function '{func_name}' not found in TASK_FUNCTIONS.")
+
+                # --------------------------------------------------
+                # Dynamic Data Dependency Resolution
+                # --------------------------------------------------
+                depends_on = t.get("depends_on_output")
+                if depends_on:
+                    if depends_on not in task_outputs:
+                        raise ValueError(
+                            f"Task '{t['id']}' depends on '{depends_on}', "
+                            f"but '{depends_on}' hasn't been defined yet. "
+                            f"Ensure tasks are ordered correctly in YAML."
+                        )
+                    # Inject the upstream task's output as a parameter
+                    params["upstream_data"] = task_outputs[depends_on]
+                
+
+                # Create task with injected dependencies
                 task = func.override(task_id=t["id"])(**params)
+                task_outputs[t["id"]] = task  # Store for downstream dependencies
 
             # --------------------------------------------------
             # Built-in Airflow operators (agnostic)
@@ -111,7 +138,6 @@ def create_dag_from_yaml(config_path: str):
                 else:
                     # Generic operator instantiation
                     task = OperatorClass(task_id=t["id"], **params)
-
             tasks[t["id"]] = task
 
         # --------------------------------------------------

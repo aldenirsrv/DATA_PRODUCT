@@ -68,13 +68,13 @@ graph TB
         CODE[Python Task Functions]
     end
 
-    subgraph "Airflow Orchestration Layer"
+    subgraph "Dag factory & Data product Validation"
         FACTORY[factory.py<br/>Dynamic DAG Factory]
         SCHEMA[JSON Schema Validator]
         DAG[Auto-Generated DAGs]
     end
 
-    subgraph "Task Execution"
+    subgraph "Airflow Orchestration Layer"
         EXTRACT[Extract Task<br/>API Calls]
         TRANSFORM[Transform Task<br/>Pandas Processing]
         STORE_FS[Store to Firestore]

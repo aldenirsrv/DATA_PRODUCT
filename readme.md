@@ -108,8 +108,8 @@ graph TB
     EXTRACT -.->|Reads credentials| SM
     STORE_FS -->|Writes| FS
     STORE_BQ -->|Writes| BQ
+	ALERT -->|Sends| SG
     ALERT -.->|Reads API key| SM
-    ALERT -->|Sends| SG
     
     FS -->|Query| CONSOLE
     BQ -->|Visualize| LOOKER

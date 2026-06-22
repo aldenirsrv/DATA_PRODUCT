@@ -86,7 +86,7 @@ graph TB
         SM[Secret Manager<br/>API Keys & Credentials]
         FS[Firestore<br/>NoSQL Documents]
         BQ[BigQuery<br/>Data Warehouse]
-        SG[SendGrid<br/>Email Service]
+        SG[Cloud Run<br/>Email Service]
     end
 
     subgraph "Data Consumers"
